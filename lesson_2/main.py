@@ -26,6 +26,8 @@ def read_root():
 def read_custom_message():
     return {"message": "This is a custom message!"}
 
-@app.get("/users")
-async def user():
-    return my_user
+@app.post("/users")
+async def user(usr: User):
+     return {"name": usr.name,
+            "age": usr.age,
+            "is_adult": usr.age>=18}
