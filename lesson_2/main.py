@@ -1,10 +1,16 @@
 import uvicorn
 from fastapi import FastAPI
+from models.models import User
 
 title = "My first App"
 
 
 app = FastAPI(title=title)
+
+
+
+first_user = {'name': 'John Doe', 'age': 1}
+my_user = User(**first_user)
 
 
 if __name__ == "__main__":
@@ -16,7 +22,10 @@ def read_root():
     return {"message": "Hello, World!"}
 
 
-# новый роут
 @app.get("/custom")
 def read_custom_message():
     return {"message": "This is a custom message!"}
+
+@app.get("/users")
+async def user():
+    return my_user
