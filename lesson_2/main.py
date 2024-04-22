@@ -1,6 +1,6 @@
 import uvicorn
 from fastapi import FastAPI
-from models.models import User
+from models.models import User, Feedback
 
 title = "My first App"
 
@@ -8,8 +8,7 @@ title = "My first App"
 app = FastAPI(title=title)
 
 
-
-first_user = {'name': 'John Doe', 'age': 1}
+first_user = {"name": "John Doe", "age": 1}
 my_user = User(**first_user)
 
 
@@ -22,11 +21,12 @@ def read_root():
     return {"message": "Hello, World!"}
 
 
-# Пример пользовательских данных (для демонстрационных целей) 
+# Пример пользовательских данных (для демонстрационных целей)
 fake_users = {
     1: {"username": "john_doe", "email": "john@example.com"},
     2: {"username": "jane_smith", "email": "jane@example.com"},
 }
+
 
 # Конечная точка для получения информации о пользователе по ID
 @app.get("/users/{user_id}")
@@ -35,8 +35,12 @@ def read_user(user_id: int):
         return fake_users[user_id]
     return {"error": "User not found"}
 
+
 @app.post("/users")
 async def user(usr: User):
-     return {"name": usr.name,
-            "age": usr.age,
-            "is_adult": usr.age>=18}
+    return {"name": usr.name, "age": usr.age, "is_adult": usr.age >= 18}
+
+
+@app.post("/feedback")
+async def feedback(fdb: Feedback):
+    return {"message": "message received thank you " + fdb.name}
