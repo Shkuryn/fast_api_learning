@@ -1,95 +1,54 @@
 import uvicorn
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, Cookie, Response
 from typing import Optional, List
 
-from models.models import Product
+from models.models import User
 
 title = "Lesson 3"
 
 
 app = FastAPI(title=title)
 
-sample_product_1 = {
-    "product_id": 123,
-    "name": "Smartphone",
-    "category": "Electronics",
-    "price": 599.99,
-}
-
-sample_product_2 = {
-    "product_id": 456,
-    "name": "Phone Case",
-    "category": "Accessories",
-    "price": 19.99,
-}
-
-sample_product_3 = {
-    "product_id": 789,
-    "name": "Iphone",
-    "category": "Electronics",
-    "price": 1299.99,
-}
-
-sample_product_4 = {
-    "product_id": 101,
-    "name": "Headphones",
-    "category": "Accessories",
-    "price": 99.99,
-}
-
-sample_product_5 = {
-    "product_id": 202,
-    "name": "Smartwatch",
-    "category": "Electronics",
-    "price": 299.99,
-}
-
-sample_products = [
-    sample_product_1,
-    sample_product_2,
-    sample_product_3,
-    sample_product_4,
-    sample_product_5,
-]
-
+# имитируем хранилище юзеров
+sample_user: dict = {
+    "username": "user123",
+    "password": "password123",
+}  # создали тестового юзера, якобы он уже зарегистрирован у нас
+fake_db: List[User] = [User(**sample_user)]
+# имитируем хранилище сессий
+sessions: dict = {}  # это можно хранить в кэше, например в Redis
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="127.0.0.1", port=8066, reload=True, workers=3)
 
 
-def get_product_by_id(product_id: int):
-    for product in sample_products:
-        if product["product_id"] == product_id:
-            return product
-    return None
+# основная логика программы
+@app.post("/login")
+async def login(user: User, response: Response):
+    for person in fake_db:  # перебрали юзеров в нашем примере базы данных
+        if (
+            person.username == user.username and person.password == user.password
+        ):  # сверили логин и пароль
+            session_token = "abc123xyz456"  # тут можно использовать модуль uuid (в продакшене), или модуль random (для выполнения задания), или самому написать рандомное значение куки, т.к. это пример тестовый
+            sessions[session_token] = (
+                user  # сохранили у себя в словаре сессию, где токен - это ключ, а значение - объект юзера
+            )
+            response.set_cookie(
+                key="session_token", value=session_token, httponly=True
+            )  # тут установили куки с защищенным флагом httponly - недоступны для вредоносного JS; флаг secure означает, что куки идут только по HTTPS
+            return {"message": "куки установлены"}
+    return {
+        "message": "Invalid username or password"
+    }  # тут можно вернуть что хотите, в ТЗ не конкретезировалось, что делать, если логин/пароль неправильные
 
 
-@app.get("/product/{product_id}")
-async def get_product(product_id: int):
-    product = get_product_by_id(product_id)
-    if product is None:
-        raise HTTPException(status_code=404, detail="Product not found")
-    return product
-
-
-def filter_products(keyword: str, category: Optional[str], limit: Optional[int]):
-    filtered_products = []
-    for product in sample_products:
-        if keyword.lower() in product["name"].lower():
-            if category is None or product["category"] == category:
-                filtered_products.append(product)
-                if limit and len(filtered_products) >= limit:
-                    break
-    return filtered_products
-
-
-@app.get("/products/search")
-async def search_products(
-    keyword: str = Query(..., min_length=1),
-    category: Optional[str] = None,
-    limit: int = 10,
-):
-    if limit < 1:
-        raise HTTPException(status_code=400, detail="Limit must be at least 1")
-    matched_products = filter_products(keyword, category, limit)
-    return matched_products
+@app.get("/user")
+async def user_info(session_token=Cookie()):
+    user = sessions.get(
+        session_token
+    )  # ищем в сессиях был ли такой токен создан, и если был, то возвращаем связанного с ним юзера
+    if user:
+        return (
+            user.dict()
+        )  # у pydantic моделей есть метод dict(), который делает словарь из модели. Можно сразу хранить словарь в сессии, не суть. Для Pydantic версии > 2 метод переименован в model_dump()
+    return {"message": "Unauthorized"}
